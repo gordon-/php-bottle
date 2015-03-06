@@ -32,6 +32,11 @@ class Bottle_Request {
     /**
      * @var array
      */
+    protected $_session = array();
+
+    /**
+     * @var array
+     */
     public $headers = array();
 
     /**
@@ -200,5 +205,53 @@ class Bottle_Request {
      */
     public function isAjax(){
         return $this->getHeader('X-Requested-With') == 'XMLHttpRequest';
+    }
+
+    /**
+     * Starts the session
+     *
+     * @return void
+     */
+    protected function startSession() {
+        if(session_status() != PHP_SESSION_ACTIVE) {
+            session_start();
+            $this->_session = $_SESSION;
+        }
+    }
+
+    /**
+     * session getter
+     *
+     * @param string $key optional session key to retrieve
+     * @return mixed the entire session if no key is given, the value of the
+     * given key else. If the key does not exist, returns NULL.
+     */
+    public function getSession($key = null) {
+        $this->startSession();
+        if($key === null) return $this->_session;
+        if(isset($this->_session[$key])) return $this->_session[$key];
+        return null;
+    }
+
+    /**()
+     * session setter
+     *
+     * @param string $key the session's key
+     * @param mixed $value
+     */
+    public function setSession($key, $value) {
+        $this->startSession();
+        $this->_session[$key] = $value;
+        $_SESSION[$key] = $value;
+    }
+
+    /**
+     * session destroyer
+     *
+     * @return void
+     */
+    public function destroySession() {
+        $this->startSession();
+        $this->_session = $_SESSION = [];
     }
 }

@@ -38,3 +38,37 @@ function mul($num) {
 function restricted() {
     return ['status' => 'OK'];
 }
+
+/**
+ * @route /session/:name
+ * @view /views/session.php
+ */
+function session($name) {
+    global $request, $response;
+    $request->setSession('name', htmlspecialchars($name));
+    return $response->redirect('session2');
+}
+
+function session_has($request, $args) {
+    return $request->getSession($args[0]) !== null;
+}
+
+/**
+ * @route /session2
+ * @view /views/session.php
+ * @requires session_has name
+ */
+function session2() {
+    global $request;
+    return ['name' => $request->getSession('name')];
+}
+
+/**
+ * @route /session-destroy
+ * @requires session_has name
+ */
+function session_kill() {
+    global $request;
+    $request->destroySession();
+    return 'OK';
+}

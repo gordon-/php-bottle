@@ -83,4 +83,35 @@ class BottleTest extends PHPUnit_Framework_TestCase {
                            .'$param is param_value', $resp->__toString());
     }
 
+    public function test404Fallback() {
+        function nopeHandler() {
+            return [];
+        }
+        $route = '/nope';
+        $view = 'demo.html';  // will not be used
+        $this->bottle->addHandler('nopeHandler', $route, $view);
+        $r = $this->bottle->getRequest();
+        $r->setURL('/yep');
+        $this->bottle->setRequest($r);
+        $resp = $this->bottle->getHandler()->run();
+        $this->assertEquals(404, $resp->getCode(),
+                            'There shouldn\'t be a handler for this URL');
+    }
+
+    public function test500Fallback() {
+        function derpHandler() {
+            throw new Exception('DERP');
+        }
+        $route = '/derp';
+        $view = 'demo.html';  // will not be used
+        $this->bottle->addHandler('derpHandler', $route, $view);
+        $r = $this->bottle->getRequest();
+        $r->getURL('/derp');
+        $this->bottle->setRequest($r);
+        $h = $this->bottle->getHandler();
+        $this->assertInstanceOf('Bottle_Handler_Exception', $h);
+        $resp = $h->run();
+        $this->assertEquals(500, $resp->getCode());
+    }
+
 }

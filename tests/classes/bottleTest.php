@@ -19,6 +19,12 @@ class BottleTest extends PHPUnit_Framework_TestCase {
                                     .DIRECTORY_SEPARATOR.'views');
     }
 
+    private function setUrl($url) {
+        $r = $this->bottle->getRequest();
+        $r->setURL($url);
+        $this->bottle->setRequest($r);
+    }
+
     public function testConstructor() {
         $this->assertCount(2, $this->bottle->getHandlers(),
                             'A generic Bottle object should contain 2 handlers:'
@@ -56,9 +62,7 @@ class BottleTest extends PHPUnit_Framework_TestCase {
         $view = 'demo.html';
         $this->bottle->addHandler('demoHandler', $route, $view);
         $this->assertCount(3, $this->bottle->getHandlers());
-        $r = $this->bottle->getRequest();
-        $r->setURL('/demo');
-        $this->bottle->setRequest($r);
+        $this->setURL('/demo');
         $resp = $this->bottle->getHandler()->run();
         $this->assertEquals('key: value', $resp->__toString());
         $this->assertEquals(200, $resp->getCode());
@@ -74,9 +78,7 @@ class BottleTest extends PHPUnit_Framework_TestCase {
         $route = '/depinjection/:param';
         $view = 'depinjection.html';
         $this->bottle->addHandler('injectionHandler', $route, $view);
-        $r = $this->bottle->getRequest();
-        $r->setURL('/depinjection/param_value');
-        $this->bottle->setRequest($r);
+        $this->setURL('/depinjection/param_value');
         $resp = $this->bottle->getHandler()->run();
         $this->assertEquals('$response is a Bottle_Response'.PHP_EOL
                            .'$request is a Bottle_Request'.PHP_EOL
@@ -90,9 +92,7 @@ class BottleTest extends PHPUnit_Framework_TestCase {
         $route = '/nope';
         $view = 'demo.html';  // will not be used
         $this->bottle->addHandler('nopeHandler', $route, $view);
-        $r = $this->bottle->getRequest();
-        $r->setURL('/yep');
-        $this->bottle->setRequest($r);
+        $this->setURL('/yep');
         $resp = $this->bottle->getHandler()->run();
         $this->assertEquals(404, $resp->getCode(),
                             'There shouldn\'t be a handler for this URL');
@@ -105,13 +105,63 @@ class BottleTest extends PHPUnit_Framework_TestCase {
         $route = '/derp';
         $view = 'demo.html';  // will not be used
         $this->bottle->addHandler('derpHandler', $route, $view);
-        $r = $this->bottle->getRequest();
-        $r->getURL('/derp');
-        $this->bottle->setRequest($r);
+        $this->setURL('/derp');
         $h = $this->bottle->getHandler();
         $this->assertInstanceOf('Bottle_Handler_Exception', $h);
         $resp = $h->run();
         $this->assertEquals(500, $resp->getCode());
+    }
+
+    public function testMultipleURLs() {
+        function handler($request) {
+            return ['key' => 'value'];
+        }
+        $routes = ['/url1', '/second/url'];
+        $view = 'demo.html';
+        $this->bottle->addHandler('handler', $routes, $view);
+        $this->setURL('/url1');
+        $resp = $this->bottle->getHandler()->run();
+        $this->assertEquals('key: value', $resp->__toString());
+
+        $this->setURL('/second/url');
+        $resp = $this->bottle->getHandler()->run();
+        $this->assertEquals('key: value', $resp->__toString());
+    }
+
+    public function testMultipleHandlers() {
+        function firstHandler() {
+            return ['key' => 'first'];
+        }
+
+        function secondHandler() {
+            return ['key' => 'second'];
+        }
+
+        $route = '/multiple';
+        $view = 'demo.html';
+        $this->bottle->addHandler('firstHandler', $route, $view);
+        $this->bottle->addHandler('secondHandler', $route, $view);
+        $this->setURL('/multiple');
+        $resp = $this->bottle->run();
+        $this->assertEquals('key: first', $resp->__toString());
+    }
+
+    public function testForward() {
+        function forwardHandler() {
+            throw new Bottle_Exception_Forward();
+        }
+
+        function forwardedHandler() {
+            return ['key' => 'value'];
+        }
+
+        $route = '/forward';
+        $view = 'demo.html';
+        $this->bottle->addHandler('forwardHandler', $route, $view);
+        $this->bottle->addHandler('forwardedHandler', $route, $view);
+        $this->setURL('/forward');
+        $resp = $this->bottle->run();
+        $this->assertEquals('key: value', $resp->__toString());
     }
 
 }
